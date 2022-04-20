@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.s3.waiters.S3Waiter;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,10 +43,10 @@ public class Utils {
         // snippet-end:[sqs.java2.sqs_example.get_queue]
     }
 
-    public static void deleteAllQs(SqsClient sqsClient) {
+    public static void deleteAllQs(SqsClient sqsClient, String prefix) {
 
         try {
-            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().build();
+            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().queueNamePrefix(prefix).build();
             ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
 
             for (String url : listQueuesResponse.queueUrls()) {
@@ -195,13 +196,14 @@ public class Utils {
         // snippet-end:[sqs.java2.sqs_example.retrieve_messages]
     }
 
-    public static String getFileString(S3Client s3, String bucket, String resultS3Loc) {
+    public static List<String> getFileString(S3Client s3, String bucket, String resultS3Loc) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucket)
                 .key(resultS3Loc)
                 .build();
         ResponseInputStream inputStream = s3.getObject(getObjectRequest);
-        return new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)).lines().collect(Collectors.joining("\n"));
+        String fileString = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)).lines().collect(Collectors.joining("\n"));
+        return Arrays.asList(fileString.split("\\s*\n\\s*"));
     }
 
     static List<Message> waitForMessagesFrom(SqsClient sqs, String MGR_LA_SQS_url, String from) {
@@ -225,5 +227,24 @@ public class Utils {
             System.err.println(e.awsErrorDetails().errorMessage());
             throw e;
         }
+    }
+
+    public static void deleteMsgs(SqsClient sqsClient, String la_mgr_sqs_url, List<Message> msgs) {
+        // snippet-start:[sqs.java2.sqs_example.delete_message]
+
+        try {
+            for (Message message : msgs) {
+                DeleteMessageRequest deleteMessageRequest = DeleteMessageRequest.builder()
+                        .queueUrl(la_mgr_sqs_url)
+                        .receiptHandle(message.receiptHandle())
+                        .build();
+                sqsClient.deleteMessage(deleteMessageRequest);
+            }
+            // snippet-end:[sqs.java2.sqs_example.delete_message]
+
+        } catch (SqsException e) {
+            System.err.println(e.awsErrorDetails().errorMessage());
+        }
+
     }
 }

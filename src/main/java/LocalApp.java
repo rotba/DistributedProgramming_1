@@ -12,6 +12,12 @@ import java.util.Arrays;
 import java.util.List;
 
 public class LocalApp {
+    static String LA_MGR_SQS_url = null;
+    static String MGR_LA_SQS_url = null;
+    static String bucket = null;
+    static String LA_resourcePrefix = "__LA__";
+    static Thread mgr;
+    static String inputLoc;
     public static void mainLA(String[] args){
         String input = args[0];
         String output = args[1];
@@ -19,9 +25,7 @@ public class LocalApp {
         boolean terminate = args.length>3;
 
         System.out.println(Arrays.toString(new String[]{"LA args: ", input, output, n , Boolean.toString(terminate)}));
-        String LA_MGR_SQS_url = null;
-        String MGR_LA_SQS_url = null;
-        String bucket = null;
+
         Region region = Region.US_EAST_1;
         SqsClient sqsClient = SqsClient.builder()
                 .region(region)
@@ -29,36 +33,43 @@ public class LocalApp {
         S3Client s3 = S3Client.builder()
                 .region(region)
                 .build();
+
         try{
-            LA_MGR_SQS_url = Utils.createQueue(sqsClient, "LA_MGR"+System.currentTimeMillis());
-            MGR_LA_SQS_url = Utils.createQueue(sqsClient, "MGR_LA"+System.currentTimeMillis());
-            bucket = "bucket" + System.currentTimeMillis();
-            Utils.createBucket(s3, bucket);
-            Thread mgr = createMGR(LA_MGR_SQS_url, MGR_LA_SQS_url, bucket, n, terminate);
-            String inputLoc = "inputLoc" + System.currentTimeMillis();
-//            Utils.putFileInBucket(s3, bucket, inputLoc, input);
+            init_data(n, terminate, sqsClient, s3);
+            Utils.putFileInBucket(s3, bucket, inputLoc, input);
             Utils.sendMsg(sqsClient, LA_MGR_SQS_url, inputLoc);
+            if(terminate){
+                Utils.sendMsg(sqsClient, LA_MGR_SQS_url, Common.TERMINATE_MSG);
+            }
             List<Message> msgs = Utils.waitForMessagesFrom(sqsClient, MGR_LA_SQS_url, "MGR");
             String resultS3Loc = msgs.get(0).body();
-            String summaryFile = Utils.getFileString(s3, bucket, resultS3Loc);
+            List<String> summaryFile = Utils.getFileString(s3, bucket, resultS3Loc);
             generateHTML(summaryFile, output);
             mgr.join();
             System.out.println(String.format("LA complete"));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
-            Utils.deleteAllQs(sqsClient);
+            Utils.deleteAllQs(sqsClient, LA_resourcePrefix);
             Utils.deleteAllBuckets(s3);
         }
 
     }
 
-    public static void generateHTML(String summaryFile, String output) {
-        List<String> lines = Arrays.asList(summaryFile.split("\\s*\n\\s*"));
+    private static void init_data(String n, boolean terminate, SqsClient sqsClient, S3Client s3) {
+        LA_MGR_SQS_url = Utils.createQueue(sqsClient, LA_resourcePrefix+"LA_MGR"+System.currentTimeMillis());
+        MGR_LA_SQS_url = Utils.createQueue(sqsClient, LA_resourcePrefix+"MGR_LA"+System.currentTimeMillis());
+        bucket = "bucket" + System.currentTimeMillis();
+        Utils.createBucket(s3, bucket);
+        mgr = createMGR(LA_MGR_SQS_url, MGR_LA_SQS_url, bucket, n, terminate);
+        inputLoc = "inputLoc" + System.currentTimeMillis();
+    }
+
+    public static void generateHTML(List<String> summaryFile, String output) {
         Document doc = Jsoup.parse("<html></html>");
         doc.body().addClass("body-styles-cls");
         for (String s:
-             lines) {
+                summaryFile) {
             doc.body().appendElement("div").text(s);
         }
         try {
