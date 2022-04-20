@@ -6,17 +6,20 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TaskReceiver implements Runnable {
     private final S3Client s3;
     private String bucket;
     private Map<String,UserTask> userTasks;
+    private AtomicInteger pendingTasksCount;
     private final SqsClient sqsClient;
 
     private String LA_MGR_SQS_url;
-    public TaskReceiver(String la_mgr_sqs_url, String mgr_wkr_sqs_url, String bucket, ConcurrentHashMap<String, UserTask> userTasks) {
+    public TaskReceiver(String la_mgr_sqs_url, String mgr_wkr_sqs_url, String bucket, ConcurrentHashMap<String, UserTask> userTasks, AtomicInteger pendingTasksCount) {
         this.bucket = bucket;
         this.userTasks = userTasks;
+        this.pendingTasksCount = pendingTasksCount;
         Region region = Region.US_EAST_1;
         sqsClient = SqsClient.builder()
                 .region(region)
@@ -38,6 +41,7 @@ public class TaskReceiver implements Runnable {
                     System.out.println("TaskReceiver stops");
                     return;
                 }
+                pendingTasksCount.incrementAndGet();
                 System.out.println(String.format("TR got %s from LA", body));
                 UserTask newUserTask = new UserTask(Utils.getFileString(s3, bucket, body).size());
                 userTasks.put(body,newUserTask);

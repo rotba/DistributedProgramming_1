@@ -1,5 +1,6 @@
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 import software.amazon.awssdk.core.waiters.WaiterResponse;
@@ -14,13 +15,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Utils {
-    public static String createQueue(SqsClient sqsClient, String queueName) {
+
+    public static String createUniqueQueue(SqsClient sqsClient, String prefix) {
 
         try {
+            String ans = getQueueIfExist(sqsClient, prefix);
+            if (ans!=null){
+                System.out.println("Q " +ans+" exits, returns it");
+                return ans;
+            }
             // snippet-start:[sqs.java2.sqs_example.create_queue]
-
+            String uniqeName = prefix;
             CreateQueueRequest createQueueRequest = CreateQueueRequest.builder()
-                    .queueName(queueName)
+                    .queueName(uniqeName)
                     .build();
 
             sqsClient.createQueue(createQueueRequest);
@@ -30,17 +37,30 @@ public class Utils {
 
             // snippet-start:[sqs.java2.sqs_example.get_queue]
             GetQueueUrlResponse getQueueUrlResponse =
-                    sqsClient.getQueueUrl(GetQueueUrlRequest.builder().queueName(queueName).build());
+                    sqsClient.getQueueUrl(GetQueueUrlRequest.builder().queueName(uniqeName).build());
             String queueUrl = getQueueUrlResponse.queueUrl();
             System.out.println(String.format("Created queue url%s", queueUrl));
             return queueUrl;
 
         } catch (SqsException e) {
             System.err.println(e.awsErrorDetails().errorMessage());
-            System.exit(1);
         }
         return "";
         // snippet-end:[sqs.java2.sqs_example.get_queue]
+    }
+
+    private static String getQueueIfExist(SqsClient sqsClient, String name) {
+        try {
+
+            GetQueueUrlRequest getQueueRequest = GetQueueUrlRequest.builder()
+                    .queueName(name)
+                    .build();
+
+            return sqsClient.getQueueUrl(getQueueRequest).queueUrl();
+
+        } catch (SqsException e) {
+            return null;
+        }
     }
 
     public static void deleteAllQs(SqsClient sqsClient, String prefix) {
@@ -59,8 +79,8 @@ public class Utils {
         }
         // snippet-end:[sqs.java2.sqs_example.get_queue]
     }
-    public static String deleteQueue(SqsClient sqsClient, String queueUrl) {
-
+    public static void deleteQueue(SqsClient sqsClient, String queueUrl) {
+        if(queueUrl==null) return;
         try {
             // snippet-start:[sqs.java2.sqs_example.create_queue]
 
@@ -73,32 +93,44 @@ public class Utils {
 
             System.out.println(String.format("Deleted sqs:%s", queueUrl));
 
+        }catch (QueueDoesNotExistException e){
+            System.out.println("q url : "+queueUrl+ " doesnt exist. hope not bug");
         } catch (SqsException e) {
             System.err.println(e.awsErrorDetails().errorMessage());
-            System.exit(1);
+            throw e;
         }
-        return "";
         // snippet-end:[sqs.java2.sqs_example.get_queue]
     }
 
-    public static void createBucket(S3Client s3Client, String bucketName) {
+    public static String createUniqueBucket(S3Client s3Client, String prefix) {
 
         try {
+            ListBucketsRequest listBucketsRequest = ListBucketsRequest.builder().build();
+            ListBucketsResponse listBucketsResponse = s3Client.listBuckets(listBucketsRequest);
+            for (Bucket b:
+                 listBucketsResponse.buckets()) {
+                if(b.name().contains(prefix)){
+                    System.out.println(prefix + " already exist");
+                    return b.name();
+                }
+            }
+            String bName = prefix+ System.currentTimeMillis();
             S3Waiter s3Waiter = s3Client.waiter();
             CreateBucketRequest bucketRequest = CreateBucketRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bName)
                     .build();
 
             s3Client.createBucket(bucketRequest);
             HeadBucketRequest bucketRequestWait = HeadBucketRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bName)
                     .build();
 
 
             // Wait until the bucket is created and print out the response
             WaiterResponse<HeadBucketResponse> waiterResponse = s3Waiter.waitUntilBucketExists(bucketRequestWait);
             waiterResponse.matched().response().ifPresent(System.out::println);
-            System.out.println(bucketName + " is ready");
+            System.out.println(bName + " is ready");
+            return bName;
 
         } catch (S3Exception e) {
             System.err.println(e.awsErrorDetails().errorMessage());
@@ -107,7 +139,7 @@ public class Utils {
     }
 
     public static void deleteBucket(S3Client s3, String bucket) {
-
+        if(bucket==null) return;
         try {
             // To delete a bucket, all the objects in the bucket must be deleted first
             ListObjectsV2Request listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket).build();
@@ -246,5 +278,43 @@ public class Utils {
             System.err.println(e.awsErrorDetails().errorMessage());
         }
 
+    }
+
+    public static void tearDown() {
+        Region region = Region.US_EAST_1;
+        SqsClient sqsClient = SqsClient.builder()
+                .region(region)
+                .build();
+        S3Client s3 = S3Client.builder()
+                .region(region)
+                .build();
+        Utils.deleteAllQs(sqsClient, LocalApp.LA_resourcePrefix);
+        Utils.deleteAllQs(sqsClient, Manager.MGR_resourcePrefix);
+        Utils.deleteAllBuckets(s3);
+    }
+    public static void list()
+    {
+        Region region = Region.US_EAST_1;
+        SqsClient sqsClient = SqsClient.builder()
+                .region(region)
+                .build();
+        S3Client s3 = S3Client.builder()
+                .region(region)
+                .build();
+        try {
+            String prefix = LocalApp.LA_MGR_ID_PREF;
+            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().queueNamePrefix(prefix).build();
+            ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
+            List<String> urls = listQueuesResponse.queueUrls();
+            for (String url: urls){
+                System.out.println(url);
+            }
+            if(urls.size()>0){
+                System.out.println(String.format("Q with prefix %s already exist", prefix));
+            }
+
+        } catch (SqsException e) {
+            System.err.println(e.awsErrorDetails().errorMessage());
+        }
     }
 }

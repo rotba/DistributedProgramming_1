@@ -9,16 +9,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Manager {
 
     static String MGR_WKR_SQS_url = null;
+    static String WKR_MGR_SQS_url = null;//TODO init
     static Region region = Region.US_EAST_1;
     static String LA_MGR_SQS_url;
     static String MGR_LA_SQS_url;
     static String bucket;
     static String n;
+    static public boolean IS_UP = false;
+    public static String MGR_resourcePrefix = "__MGR__";
+    static AtomicInteger pendingTasksCount = new AtomicInteger(0);
     public static void mainMGR(String[] args) {
+        IS_UP=true;
         parseARGS(args);
         System.out.println(Arrays.toString(new String[]{"MGR started args: ",LA_MGR_SQS_url, MGR_LA_SQS_url, bucket, n}));
 
@@ -28,19 +34,17 @@ public class Manager {
         S3Client s3 = S3Client.builder()
                 .region(region)
                 .build();
-        String MGR_resourcePrefix = "__MGR__";
+
         ConcurrentHashMap<String, UserTask> userTasks = new ConcurrentHashMap<>();
         try{
-            init_resources(sqsClient, MGR_resourcePrefix);
-            Thread taskReciever = new Thread(new TaskReceiver(LA_MGR_SQS_url, MGR_WKR_SQS_url, bucket, userTasks));
+            init_resources(sqsClient);
+            Thread taskReciever = new Thread(new TaskReceiver(LA_MGR_SQS_url, MGR_WKR_SQS_url, bucket, userTasks, pendingTasksCount));
+            Thread resultsCollector = new Thread(new ResultsCollector(MGR_LA_SQS_url, WKR_MGR_SQS_url, bucket, userTasks, pendingTasksCount));
             taskReciever.start();
+            resultsCollector.start();
             taskReciever.join();
-            System.out.println("There are "+ userTasks.size()+ " user tasks");
-            String summary = "POS: no_where short_desc\n" +
-                    "CONSTITUENCY: far_no_where very_short_desc\n";
-            String summLoc = "summary" + System.currentTimeMillis();
-            Utils.sendFileString(s3, bucket, summLoc, summary);
-            Utils.sendMsg(sqsClient, MGR_LA_SQS_url, summLoc);
+            while (pendingTasksCount.get() >0){}
+            resultsCollector.interrupt();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -50,8 +54,8 @@ public class Manager {
         System.out.println("Manager finished");
     }
 
-    private static void init_resources(SqsClient sqsClient, String MGR_resourcePrefix) {
-        MGR_WKR_SQS_url = Utils.createQueue(sqsClient, MGR_resourcePrefix +"MGR_WKR"+System.currentTimeMillis());
+    private static void init_resources(SqsClient sqsClient) {
+        MGR_WKR_SQS_url = Utils.createUniqueQueue(sqsClient, MGR_resourcePrefix +"MGR_WKR");
     }
 
     private static void parseARGS(String[] args) {

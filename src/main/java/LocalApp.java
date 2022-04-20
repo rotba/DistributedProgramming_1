@@ -7,7 +7,6 @@ import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
 
@@ -15,27 +14,39 @@ public class LocalApp {
     static String LA_MGR_SQS_url = null;
     static String MGR_LA_SQS_url = null;
     static String bucket = null;
-    static String LA_resourcePrefix = "__LA__";
+    public static String LA_resourcePrefix = "__LA__";
     static Thread mgr;
     static String inputLoc;
+    static Region region = Region.US_EAST_1;
+    static SqsClient sqsClient;
+
+    static S3Client s3;
+
+    static String input;
+    static String output;
+    static String n;
+    static boolean terminate;
+
+    public static String LA_MGR_ID_PREF =LA_resourcePrefix+"LA_MGR";
+    public  static String MGR_LA_ID_PREF =LA_resourcePrefix+"MGR_LA";
+    static String BUCKET_ID = "robarakbucket";
     public static void mainLA(String[] args){
-        String input = args[0];
-        String output = args[1];
-        String n = args[2];
-        boolean terminate = args.length>3;
+        input = args[0];
+        output = args[1];
+        n = args[2];
+        terminate = args.length>3;
 
         System.out.println(Arrays.toString(new String[]{"LA args: ", input, output, n , Boolean.toString(terminate)}));
-
-        Region region = Region.US_EAST_1;
-        SqsClient sqsClient = SqsClient.builder()
+        sqsClient = SqsClient.builder()
                 .region(region)
                 .build();
-        S3Client s3 = S3Client.builder()
+        s3 = S3Client.builder()
                 .region(region)
                 .build();
 
         try{
-            init_data(n, terminate, sqsClient, s3);
+            init_resources();
+            initMGR();
             Utils.putFileInBucket(s3, bucket, inputLoc, input);
             Utils.sendMsg(sqsClient, LA_MGR_SQS_url, inputLoc);
             if(terminate){
@@ -45,23 +56,35 @@ public class LocalApp {
             String resultS3Loc = msgs.get(0).body();
             List<String> summaryFile = Utils.getFileString(s3, bucket, resultS3Loc);
             generateHTML(summaryFile, output);
-            mgr.join();
+            if(terminate) mgr.join();
             System.out.println(String.format("LA complete"));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
-            Utils.deleteAllQs(sqsClient, LA_resourcePrefix);
-            Utils.deleteAllBuckets(s3);
+            if(terminate){
+                Utils.deleteQueue(sqsClient, LA_MGR_SQS_url);
+                Utils.deleteQueue(sqsClient, MGR_LA_SQS_url);
+                Utils.deleteBucket(s3, bucket);
+            }
         }
 
     }
 
-    private static void init_data(String n, boolean terminate, SqsClient sqsClient, S3Client s3) {
-        LA_MGR_SQS_url = Utils.createQueue(sqsClient, LA_resourcePrefix+"LA_MGR"+System.currentTimeMillis());
-        MGR_LA_SQS_url = Utils.createQueue(sqsClient, LA_resourcePrefix+"MGR_LA"+System.currentTimeMillis());
-        bucket = "bucket" + System.currentTimeMillis();
-        Utils.createBucket(s3, bucket);
+    private static void initMGR(){
+        if(MGRisUp()){
+            return;
+        }
         mgr = createMGR(LA_MGR_SQS_url, MGR_LA_SQS_url, bucket, n, terminate);
+    }
+
+    private static boolean MGRisUp() {
+        return Manager.IS_UP;
+    }
+
+    private static void init_resources() {
+        LA_MGR_SQS_url = Utils.createUniqueQueue(sqsClient, LA_MGR_ID_PREF);
+        MGR_LA_SQS_url = Utils.createUniqueQueue(sqsClient, MGR_LA_ID_PREF);
+        bucket = Utils.createUniqueBucket(s3, BUCKET_ID);
         inputLoc = "inputLoc" + System.currentTimeMillis();
     }
 
