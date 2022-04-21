@@ -2,14 +2,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UserTask {
     private AtomicBoolean[] tasksIsDone;
-    private String[] taskLoc;
-    private String[] tasksMsg;
+    private String[] res;
     private int doneCount;
     private final int size;
     public UserTask(int tasks){
         size = tasks;
         tasksIsDone = new AtomicBoolean[size];
-        taskLoc = new String[size];
+        res = new String[size];
         doneCount =0;
         for (int i = 0; i < size; i++) {
             tasksIsDone[i] = new AtomicBoolean(false);
@@ -39,7 +38,8 @@ public class UserTask {
         return size;
     }
 
-    public void setDone(int i) {
+    public void setDone(int i,String res) {
+        this.res[i] = res;
         setVal(i ,true);
     }
     private void setVal(int i, boolean newVal) {
@@ -49,5 +49,27 @@ public class UserTask {
             val = ab.get();
         }while (!ab.compareAndSet(val, newVal));
         tasksIsDone[i].set(true);
+    }
+
+    public int getNotDoneCount() {
+        int ans = 0;
+        for (int i = 0; i < size; i++) {
+            if(!tasksIsDone[i].get()){
+                ans++;
+            }
+        }
+        return ans;
+    }
+
+    public boolean isDone(int i) {
+        return tasksIsDone[i].get();
+    }
+
+    public String getRes() {
+        String ans = "";
+        for (int i = 0; i < size; i++) {
+            ans+=res[i]+'\n';
+        }
+        return ans;
     }
 }

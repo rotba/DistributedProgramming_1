@@ -11,33 +11,35 @@ import software.amazon.awssdk.services.s3.waiters.S3Waiter;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Utils {
 
-    public static String createUniqueQueue(SqsClient sqsClient, String prefix) {
+    public static String createUniqueQueue(SqsClient sqsClient, String uniqueName) {
 
         try {
-            String ans = getQueueIfExist(sqsClient, prefix);
+            String ans = getQueueIfExist(sqsClient, uniqueName);
             if (ans!=null){
                 System.out.println("Q " +ans+" exits, returns it");
                 return ans;
             }
             // snippet-start:[sqs.java2.sqs_example.create_queue]
-            String uniqeName = prefix;
+            Map<QueueAttributeName, String> queueAttributes = new HashMap<>();
+            queueAttributes.put(QueueAttributeName.FIFO_QUEUE, "true");
             CreateQueueRequest createQueueRequest = CreateQueueRequest.builder()
-                    .queueName(uniqeName)
+                    .queueName(uniqueName)
+                    .attributes(queueAttributes)
                     .build();
 
             sqsClient.createQueue(createQueueRequest);
             // snippet-end:[sqs.java2.sqs_example.create_queue]
 
-
-
             // snippet-start:[sqs.java2.sqs_example.get_queue]
             GetQueueUrlResponse getQueueUrlResponse =
-                    sqsClient.getQueueUrl(GetQueueUrlRequest.builder().queueName(uniqeName).build());
+                    sqsClient.getQueueUrl(GetQueueUrlRequest.builder().queueName(uniqueName).build());
             String queueUrl = getQueueUrlResponse.queueUrl();
             System.out.println(String.format("Created queue url%s", queueUrl));
             return queueUrl;
@@ -61,6 +63,23 @@ public class Utils {
         } catch (SqsException e) {
             return null;
         }
+    }
+
+    private static String getQueueIfContains(SqsClient sqsClient, String subName) {
+        try {
+            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().build();
+            ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
+            List<String> urls = listQueuesResponse.queueUrls();
+            for (String url: urls){
+                if(url.contains(subName)){
+                    return url;
+                }
+            }
+
+        } catch (SqsException e) {
+            return null;
+        }
+        return null;
     }
 
     public static void deleteAllQs(SqsClient sqsClient, String prefix) {
@@ -128,8 +147,8 @@ public class Utils {
 
             // Wait until the bucket is created and print out the response
             WaiterResponse<HeadBucketResponse> waiterResponse = s3Waiter.waitUntilBucketExists(bucketRequestWait);
-            waiterResponse.matched().response().ifPresent(System.out::println);
-            System.out.println(bName + " is ready");
+            waiterResponse.matched().response().ifPresent((x)->{});
+            System.out.println("created bucket "+bName);
             return bName;
 
         } catch (S3Exception e) {
@@ -193,9 +212,8 @@ public class Utils {
         }
     }
 
-    public static void sendMsg(SqsClient sqsClient, String queueUrl, String msg) {
+    public static void sendMsg(SqsClient sqsClient, String queueUrl, String msg, String fromTo) {
 
-        System.out.println("Send a msg multiple messages");
 
         try {
             SendMessageRequest req = SendMessageRequest.builder()
@@ -203,7 +221,7 @@ public class Utils {
                     .messageBody(msg)
                     .build();
             sqsClient.sendMessage(req);
-            System.out.println(String.format(" sent %s though %s", msg, queueUrl));
+            System.out.println(String.format(fromTo+": %s through %s", msg, queueUrl));
             // snippet-end:[sqs.java2.sqs_example.send__multiple_messages]
 
         } catch (SqsException e) {
@@ -211,16 +229,23 @@ public class Utils {
             throw e;
         }
     }
-    public static List<Message> receiveMessages(SqsClient sqsClient, String queueUrl) {
+    public static List<Message> receiveMessages(SqsClient sqsClient, String queueUrl,int amount) {
 
         try {
+            if (amount == Integer.MAX_VALUE) {
+                amount = 5;
+            }
             // snippet-start:[sqs.java2.sqs_example.retrieve_messages]
             ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
                     .queueUrl(queueUrl)
-                    .maxNumberOfMessages(5)
+                    .maxNumberOfMessages(amount)
                     .build();
             List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
             return messages;
+        }catch (QueueDoesNotExistException e){
+            System.out.println("problematic q "+queueUrl);
+            System.err.println(e.awsErrorDetails().errorMessage());
+            throw e;
         } catch (SqsException e) {
             System.err.println(e.awsErrorDetails().errorMessage());
             throw e;
@@ -238,13 +263,17 @@ public class Utils {
         return Arrays.asList(fileString.split("\\s*\n\\s*"));
     }
 
-    static List<Message> waitForMessagesFrom(SqsClient sqs, String MGR_LA_SQS_url, String from) {
+    static List<Message> waitForMessagesFrom(SqsClient sqs, String MGR_LA_SQS_url, String fromTo,int amount) throws InterruptedException {
         List<Message> msgs = null;
-        System.out.println(String.format("waiting for msgs from %s", from));
-        do {
-            msgs = receiveMessages(sqs, MGR_LA_SQS_url);
+        System.out.println(String.format("Waiting for msgs from %s", fromTo));
+        do
+        {
+            if(Thread.interrupted()){
+                throw new InterruptedException();
+            }
+            msgs = receiveMessages(sqs, MGR_LA_SQS_url,amount);
         }while (msgs == null || msgs.size() < 1);
-        System.out.println(String.format("got %d msgs from %s", msgs.size(), from));
+        System.out.println(String.format("Got %d msgs from %s", msgs.size(), fromTo));
         return msgs;
     }
 
@@ -292,6 +321,35 @@ public class Utils {
         Utils.deleteAllQs(sqsClient, Manager.MGR_resourcePrefix);
         Utils.deleteAllBuckets(s3);
     }
+
+    public static void clearResources() {
+        Region region = Region.US_EAST_1;
+        SqsClient sqsClient = SqsClient.builder()
+                .region(region)
+                .build();
+        S3Client s3 = S3Client.builder()
+                .region(region)
+                .build();
+        Utils.purgeAllQs(sqsClient, LocalApp.LA_resourcePrefix);
+        Utils.purgeAllQs(sqsClient, Manager.MGR_resourcePrefix);
+        Utils.deleteAllBuckets(s3);
+    }
+    public static void purgeAllQs(SqsClient sqsClient, String prefix) {
+
+        try {
+            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().queueNamePrefix(prefix).build();
+            ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
+
+            for (String url : listQueuesResponse.queueUrls()) {
+                purgeQ(sqsClient, url);
+            }
+
+        } catch (SqsException e) {
+            System.err.println(e.awsErrorDetails().errorMessage());
+            throw e;
+        }
+        // snippet-end:[sqs.java2.sqs_example.get_queue]
+    }
     public static void list()
     {
         Region region = Region.US_EAST_1;
@@ -302,16 +360,26 @@ public class Utils {
                 .region(region)
                 .build();
         try {
-            String prefix = LocalApp.LA_MGR_ID_PREF;
-            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().queueNamePrefix(prefix).build();
+            ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().build();
             ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
             List<String> urls = listQueuesResponse.queueUrls();
             for (String url: urls){
                 System.out.println(url);
             }
-            if(urls.size()>0){
-                System.out.println(String.format("Q with prefix %s already exist", prefix));
-            }
+
+        } catch (SqsException e) {
+            System.err.println(e.awsErrorDetails().errorMessage());
+        }
+    }
+
+    public static void purgeQ(SqsClient sqsClient, String url) {
+        try {
+            PurgeQueueRequest purgeQ = PurgeQueueRequest.builder()
+                    .queueUrl(url)
+                    .build();
+            sqsClient.purgeQueue(purgeQ);
+            System.out.println("Purged "+url);
+            // snippet-end:[sqs.java2.sqs_example.delete_message]
 
         } catch (SqsException e) {
             System.err.println(e.awsErrorDetails().errorMessage());

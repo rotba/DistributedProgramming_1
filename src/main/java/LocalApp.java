@@ -48,11 +48,11 @@ public class LocalApp {
             init_resources();
             initMGR();
             Utils.putFileInBucket(s3, bucket, inputLoc, input);
-            Utils.sendMsg(sqsClient, LA_MGR_SQS_url, inputLoc);
+            Utils.sendMsg(sqsClient, LA_MGR_SQS_url, inputLoc, "LA->TR");
             if(terminate){
-                Utils.sendMsg(sqsClient, LA_MGR_SQS_url, Common.TERMINATE_MSG);
+                Utils.sendMsg(sqsClient, LA_MGR_SQS_url, Common.TERMINATE_MSG+System.currentTimeMillis(), "LA->TR");
             }
-            List<Message> msgs = Utils.waitForMessagesFrom(sqsClient, MGR_LA_SQS_url, "MGR");
+            List<Message> msgs = Utils.waitForMessagesFrom(sqsClient, MGR_LA_SQS_url, "MGR->LA", 1);
             String resultS3Loc = msgs.get(0).body();
             List<String> summaryFile = Utils.getFileString(s3, bucket, resultS3Loc);
             generateHTML(summaryFile, output);
@@ -62,8 +62,8 @@ public class LocalApp {
             throw new RuntimeException(e);
         } finally {
             if(terminate){
-                Utils.deleteQueue(sqsClient, LA_MGR_SQS_url);
-                Utils.deleteQueue(sqsClient, MGR_LA_SQS_url);
+                Utils.purgeQ(sqsClient, LA_MGR_SQS_url);
+                Utils.purgeQ(sqsClient, MGR_LA_SQS_url);
                 Utils.deleteBucket(s3, bucket);
             }
         }
@@ -99,6 +99,7 @@ public class LocalApp {
             FileWriter myWriter = new FileWriter(output);
             myWriter.write(doc.toString());
             myWriter.close();
+            System.out.println("OUTPUT at "+output);
         } catch (IOException e) {
             System.out.println("An error occurred.");
             e.printStackTrace();

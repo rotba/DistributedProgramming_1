@@ -16,6 +16,7 @@ public class TaskReceiver implements Runnable {
     private final SqsClient sqsClient;
 
     private String LA_MGR_SQS_url;
+    private String MGR_WKR_SQS_url;
     public TaskReceiver(String la_mgr_sqs_url, String mgr_wkr_sqs_url, String bucket, ConcurrentHashMap<String, UserTask> userTasks, AtomicInteger pendingTasksCount) {
         this.bucket = bucket;
         this.userTasks = userTasks;
@@ -28,26 +29,43 @@ public class TaskReceiver implements Runnable {
                 .region(region)
                 .build();
         LA_MGR_SQS_url = la_mgr_sqs_url;
+        MGR_WKR_SQS_url= mgr_wkr_sqs_url;
     }
 
     @Override
     public void run() {
-        while(true){
-            List<Message> msgs = Utils.waitForMessagesFrom(sqsClient, LA_MGR_SQS_url, "LA");
+        System.out.println("TR start");
+        boolean terminated = false;
+        while(!Thread.interrupted()){
+            List<Message> msgs = null;
+            try {
+                msgs = Utils.waitForMessagesFrom(sqsClient, LA_MGR_SQS_url, "LA->TR", Integer.MAX_VALUE);
+            } catch (InterruptedException e) {
+                return;
+            }
             for (Message msg:
                  msgs) {
                 String body = msg.body();
-                if(body.equals(Common.TERMINATE_MSG)){
-                    System.out.println("TaskReceiver stops");
+                if(body.contains(Common.TERMINATE_MSG)){
+                    System.out.println("TR term with "+body);
+                    Utils.deleteMsgs(sqsClient, LA_MGR_SQS_url , msgs);
                     return;
                 }
+                String taskDescriptionLoc= body;
                 pendingTasksCount.incrementAndGet();
-                System.out.println(String.format("TR got %s from LA", body));
-                UserTask newUserTask = new UserTask(Utils.getFileString(s3, bucket, body).size());
-                userTasks.put(body,newUserTask);
-                System.out.println(String.format("TaskReceiver got task: %s: %s", body, newUserTask.toString()));
+                System.out.println(String.format("TR got %s from LA", taskDescriptionLoc));
+                UserTask newUserTask = new UserTask(Utils.getFileString(s3, bucket, taskDescriptionLoc).size());
+                userTasks.put(taskDescriptionLoc,newUserTask);
+                sendToWrkrs(taskDescriptionLoc, newUserTask.size());
+                System.out.println(String.format("TaskReceiver got task: %s: %s", taskDescriptionLoc, newUserTask.toString()));
             }
             Utils.deleteMsgs(sqsClient, LA_MGR_SQS_url , msgs);
+        }
+    }
+
+    private void sendToWrkrs(String taskDescriptionLoc, int size) {
+        for (int i = 0; i < size; i++) {
+            Utils.sendMsg(sqsClient, MGR_WKR_SQS_url, MgrWkrMsg.getString(taskDescriptionLoc,i), "TR->WKR");
         }
     }
 }

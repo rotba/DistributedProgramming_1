@@ -24,6 +24,8 @@ public class TheMain {
             }
         }else if (args[0].equals("LST")){
             Utils.list();
+        }else if(args[0].equals("CLR")){
+            Utils.clearResources();
         }
     }
 }
