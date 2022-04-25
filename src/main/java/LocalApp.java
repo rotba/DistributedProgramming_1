@@ -5,16 +5,19 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 
 public class LocalApp {
     static String LA_MGR_SQS_url = null;
     static String MGR_LA_SQS_url = null;
     static String bucket = null;
-    public static String LA_resourcePrefix = "__LA__";
+    public static String LA_resourcePrefix = "xxLAxx";
     static Thread mgr;
     static String inputLoc;
     static Region region = Region.US_EAST_1;
@@ -27,9 +30,12 @@ public class LocalApp {
     static String n;
     static boolean terminate;
 
-    public static String LA_MGR_ID_PREF =LA_resourcePrefix+"LA_MGR";
-    public  static String MGR_LA_ID_PREF =LA_resourcePrefix+"MGR_LA";
+    public static String LA_MGR_ID_PREF =LA_resourcePrefix+"LAxMGR";
+    public  static String MGR_LA_ID_PREF =LA_resourcePrefix+"MGRxLA";
     static String BUCKET_ID = "robarakbucket";
+
+    static String SECRET;
+    static String ACCESS;
     public static void mainLA(String[] args){
         input = args[0];
         output = args[1];
@@ -45,6 +51,7 @@ public class LocalApp {
                 .build();
 
         try{
+            read_credentials();
             init_resources();
             initMGR();
             Utils.putFileInBucket(s3, bucket, inputLoc, input);
@@ -68,6 +75,28 @@ public class LocalApp {
             }
         }
 
+    }
+
+    private static void read_credentials() {
+        try {
+            File myObj = new File("/home/rotemb271/.aws/credentials");
+            Scanner myReader = new Scanner(myObj);
+            while (myReader.hasNextLine()) {
+                String data = myReader.nextLine();
+                if (data.contains("aws_access_key_id")){
+                    ACCESS = data.split("\\s+")[2];
+                }else if(data.contains("aws_secret_access_key")){
+                    SECRET = data.split("\\s+")[2];
+                }
+            }
+            myReader.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+        System.out.println(ACCESS);
+        System.out.println(SECRET);
     }
 
     private static void initMGR(){
@@ -107,7 +136,17 @@ public class LocalApp {
     }
 
     private static Thread createMGR(String la_mgr_sqs_url, String mgr_la_sqs_url, String bucket, String n, boolean terminate) {
-        String[] args = new String[]{la_mgr_sqs_url, mgr_la_sqs_url, bucket, n, terminate ? "terminate": ""};
+        String[] args = new String[Common.MGR_IDX.LENGTH.idx];
+        args[Common.MGR_IDX.LA_MGR_SQS.idx]=LA_MGR_SQS_url;
+        args[Common.MGR_IDX.MGR_LA_SQS.idx]= MGR_LA_SQS_url;
+        args[Common.MGR_IDX.AMI.idx]="NO_AMI_YET";
+        args[Common.MGR_IDX.BKT.idx] = bucket;
+        args[Common.MGR_IDX.N.idx] = n;
+        args[Common.MGR_IDX.SECRET.idx] = SECRET;
+        args[Common.MGR_IDX.ACCESS.idx] = ACCESS;
+        for (int i = 0; i <args.length; i++) {
+            assert args[i]!=null;
+        }
         Thread mgr = new Thread(()->Manager.mainMGR(args));
         mgr.start();
         return mgr;

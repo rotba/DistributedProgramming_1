@@ -1,6 +1,9 @@
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.*;
+import software.amazon.awssdk.services.ec2.model.Tag;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 import software.amazon.awssdk.core.waiters.WaiterResponse;
@@ -10,16 +13,13 @@ import software.amazon.awssdk.services.s3.waiters.S3Waiter;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Utils {
 
-    public static String createUniqueQueue(SqsClient sqsClient, String uniqueName) {
-
+    public static String createUniqueQueue(SqsClient sqsClient, String uniqueGivenName) {
+        String uniqueName= uniqueGivenName+Common.FIFO_SUFFIX;
         try {
             String ans = getQueueIfExist(sqsClient, uniqueName);
             if (ans!=null){
@@ -29,6 +29,7 @@ public class Utils {
             // snippet-start:[sqs.java2.sqs_example.create_queue]
             Map<QueueAttributeName, String> queueAttributes = new HashMap<>();
             queueAttributes.put(QueueAttributeName.FIFO_QUEUE, "true");
+            queueAttributes.put(QueueAttributeName.CONTENT_BASED_DEDUPLICATION, "true");
             CreateQueueRequest createQueueRequest = CreateQueueRequest.builder()
                     .queueName(uniqueName)
                     .attributes(queueAttributes)
@@ -65,7 +66,7 @@ public class Utils {
         }
     }
 
-    private static String getQueueIfContains(SqsClient sqsClient, String subName) {
+    private static String getQueueIfContains_DEPRECATED(SqsClient sqsClient, String subName) {
         try {
             ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().build();
             ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
@@ -218,6 +219,7 @@ public class Utils {
         try {
             SendMessageRequest req = SendMessageRequest.builder()
                     .queueUrl(queueUrl)
+                    .messageGroupId("ID")
                     .messageBody(msg)
                     .build();
             sqsClient.sendMessage(req);
@@ -385,4 +387,7 @@ public class Utils {
             System.err.println(e.awsErrorDetails().errorMessage());
         }
     }
+
+
+
 }

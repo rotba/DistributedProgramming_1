@@ -26,6 +26,8 @@ public class TheMain {
             Utils.list();
         }else if(args[0].equals("CLR")){
             Utils.clearResources();
+        }else if(args[0].equals("WKR")){
+            Worker.wrkrMain(subArgs);
         }
     }
 }

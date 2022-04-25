@@ -4,6 +4,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,17 +47,20 @@ public class ResultsCollector implements Runnable {
                 WkrMgrMsg parsedMsg = WkrMgrMsg.parse(msg.body());
                 UserTask ut = userTasks.get(parsedMsg.getFile());
                 int wkrTaskIdx = parsedMsg.getIdx();
+
                 if(!ut.isDone(wkrTaskIdx)){
                     ut.setDone(wkrTaskIdx, parsedMsg.getRes());
+                    Utils.deleteMsgs(sqsClient, WKR_MGR_SQS_url, Arrays.asList(msg));
                     if (ut.isDone()){
                         String resLoc = "RES" + parsedMsg.getFile();
                         Utils.sendFileString(s3, bucket, resLoc, ut.getRes());
                         Utils.sendMsg(sqsClient, MGR_LA_SQS_url, resLoc, "RC->LA");
-                        pendingTasksCount.decrementAndGet();
                         System.out.println("RC done handling a usertask: "+parsedMsg.getFile());
+                        pendingTasksCount.decrementAndGet();
                     }
+                }else{
+                    Utils.deleteMsgs(sqsClient, WKR_MGR_SQS_url, Arrays.asList(msg));//might fail because the tasks can complete and interrupt will be sent
                 }
-
             }
         }
         System.out.println("RC stopped");

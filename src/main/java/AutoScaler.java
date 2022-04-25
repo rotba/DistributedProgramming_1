@@ -1,21 +1,103 @@
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AutoScaler implements Runnable {
+public abstract class AutoScaler implements Runnable {
     private int n;
-    private String MGR_WKR_SQS_url;
-    private String WKR_MGR_SQS_url;
-    private String bucket;
+    protected String MGR_WKR_SQS_url;
+    protected String WKR_MGR_SQS_url;
+    protected String bucket;
     private ConcurrentHashMap<String, UserTask> userTasks;
     Queue<Thread> wrkrs = new LinkedList<>();
+    Queue<String> wrkrsEc2 = new LinkedList<>();
 
-    public AutoScaler(int n, String MGR_WKR_SQS_url, String WKR_MGR_SQS_url, String bucket, ConcurrentHashMap<String, UserTask> userTasks) {
+    String wrkrAmi;
+
+    String access;
+
+    String secret;
+
+    protected static String wkrTag = "WKR";
+
+    public AutoScaler build(){
+        assert n!=0;
+        assert MGR_WKR_SQS_url!=null;
+        assert WKR_MGR_SQS_url!=null;
+        assert bucket!=null;
+        assert userTasks!=null;
+        assert wrkrAmi!=null;
+        assert access!=null;
+        assert secret!=null;
+        return this;
+    }
+    private static boolean THREAD_MODE = false;
+
+    public AutoScaler setN(int n) {
         this.n = n;
+        return this;
+    }
+
+    public AutoScaler setMGR_WKR_SQS_url(String MGR_WKR_SQS_url) {
         this.MGR_WKR_SQS_url = MGR_WKR_SQS_url;
+        return this;
+    }
+
+    public AutoScaler setWKR_MGR_SQS_url(String WKR_MGR_SQS_url) {
         this.WKR_MGR_SQS_url = WKR_MGR_SQS_url;
+        return this;
+    }
+
+    public AutoScaler setBucket(String bucket) {
         this.bucket = bucket;
+        return this;
+    }
+
+    public AutoScaler setUserTasks(ConcurrentHashMap<String, UserTask> userTasks) {
         this.userTasks = userTasks;
+        return this;
+    }
+
+    public AutoScaler setWrkrs(Queue<Thread> wrkrs) {
+        this.wrkrs = wrkrs;
+        return this;
+    }
+
+    public AutoScaler setWrkrAmi(String wrkrAmi) {
+        this.wrkrAmi = wrkrAmi;
+        return this;
+    }
+
+    public AutoScaler setAccess(String access) {
+        this.access = access;
+        return this;
+    }
+
+    public AutoScaler setSecret(String secret) {
+        this.secret = secret;
+        return this;
+    }
+
+
+
+    Region region = Region.US_EAST_1;
+
+    Ec2Client ec2;
+
+    public static AutoScaler create(){
+        if(THREAD_MODE){
+            return new ThreadModeAutoScaler();
+        }else{
+            return new EC2AutoScaler();
+        }
+    }
+
+    protected AutoScaler() {
+        ec2 = Ec2Client.builder()
+                .region(region)
+                .build();
     }
 
     @Override
@@ -39,30 +121,13 @@ public class AutoScaler implements Runnable {
             return 0;
     }
 
-    private void terminate(int i) {
-        for (int j = 0; j <i; j++) {
-            Thread wkr = wrkrs.poll();
-            wkr.interrupt();
-            try {
-                wkr.join();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
+    protected abstract void terminate(int i);
 
-    private void scaleOut(int i) {
-        for (int j = 0; j < i; j++) {
-            Thread wkr = new Thread(() -> new Worker().wrkrMain(new String[]{MGR_WKR_SQS_url, WKR_MGR_SQS_url, bucket}));
-            wkr.start();
-            wrkrs.add(wkr);
-        }
 
-    }
+    protected abstract void scaleOut(int i);
 
-    private int countWorkers() {
-        return wrkrs.size();
-    }
+
+    protected abstract int countWorkers();
 
     private int countPendingWorkerTasks() {
         int ans  =0;

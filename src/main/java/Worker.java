@@ -58,8 +58,8 @@ public class Worker {
                 return;
             }
         }while (!initialized.compareAndSet(val, true));
-        MGR_WKR_SQS_url=args[0];
-        WKR_MGR_SQS_url=args[1];
-        bucket =args[2];
+        MGR_WKR_SQS_url=args[Common.WKR_IDX.MGR_WKR_SQS.idx];
+        WKR_MGR_SQS_url=args[Common.WKR_IDX.WKR_MGR_SQS.idx];
+        bucket =args[Common.WKR_IDX.BKT.idx];
     }
 }
