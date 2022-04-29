@@ -65,7 +65,7 @@ public class TaskReceiver implements Runnable {
 
     private void sendToWrkrs(String taskDescriptionLoc, int size) {
         for (int i = 0; i < size; i++) {
-            Utils.sendMsg(sqsClient, MGR_WKR_SQS_url, MgrWkrMsg.getString(taskDescriptionLoc,i), "TR->WKR");
+            Utils.sendMsg(sqsClient, MGR_WKR_SQS_url, new MgrWkrMsg(taskDescriptionLoc,i).toString(), "TR->WKR", ""+System.currentTimeMillis());
         }
     }
 }

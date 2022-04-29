@@ -1,3 +1,9 @@
+import edu.stanford.nlp.simple.Document;
+import edu.stanford.nlp.simple.Sentence;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.sqs.SqsClient;
+
 import java.util.Arrays;
 
 public class TheMain {
@@ -28,6 +34,23 @@ public class TheMain {
             Utils.clearResources();
         }else if(args[0].equals("WKR")){
             Worker.wrkrMain(subArgs);
+        }else if(args[0].equals("PSR")){
+            Document doc = new Document("add your text here! It can contain multiple sentences.");
+            for (Sentence sent : doc.sentences()) {  // Will iterate over two sentences
+                // We're only asking for words -- no need to load any models yet
+                System.out.println("The second word of the sentence '" + sent + "' is " + sent.word(1));
+                // When we ask for the lemma, it will load and run the part of speech tagger
+                System.out.println("The third lemma of the sentence '" + sent + "' is " + sent.lemma(2));
+                // When we ask for the parse, it will load and run the parser
+                System.out.println("The parse of the sentence '" + sent + "' is " + sent.parse());
+                // ...
+            }
+        }else if(args[0].equals("HMSG")){
+            Region region = Region.US_EAST_1;
+            S3Client s3 = S3Client.builder()
+                    .region(region)
+                    .build();
+            System.out.println(Worker.handleMsg(s3, "robarakbucket1651229518122","POS", "https://www.gutenberg.org/files/1659/1659-0.txt", 0, "loc"+System.currentTimeMillis()));
         }
     }
 }

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ResultsCollector implements Runnable {
+    public static final String RC_LA_GID = "RC_LA";
     String MGR_LA_SQS_url;
     String WKR_MGR_SQS_url;
     private String bucket;
@@ -44,17 +45,17 @@ public class ResultsCollector implements Runnable {
             }
             for (Message msg:
                  msgs) {
-                WkrMgrMsg parsedMsg = WkrMgrMsg.parse(msg.body());
+                WkrMgrMsg parsedMsg = new WkrMgrMsg(msg.body());
+                System.out.println(String.format("RC got %s", parsedMsg.toString()));
                 UserTask ut = userTasks.get(parsedMsg.getFile());
                 int wkrTaskIdx = parsedMsg.getIdx();
-
                 if(!ut.isDone(wkrTaskIdx)){
                     ut.setDone(wkrTaskIdx, parsedMsg.getRes());
                     Utils.deleteMsgs(sqsClient, WKR_MGR_SQS_url, Arrays.asList(msg));
                     if (ut.isDone()){
                         String resLoc = "RES" + parsedMsg.getFile();
                         Utils.sendFileString(s3, bucket, resLoc, ut.getRes());
-                        Utils.sendMsg(sqsClient, MGR_LA_SQS_url, resLoc, "RC->LA");
+                        Utils.sendMsg(sqsClient, MGR_LA_SQS_url, resLoc, "RC->LA", RC_LA_GID);
                         System.out.println("RC done handling a usertask: "+parsedMsg.getFile());
                         pendingTasksCount.decrementAndGet();
                     }

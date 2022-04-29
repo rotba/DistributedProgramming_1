@@ -29,7 +29,7 @@ public class Utils {
             // snippet-start:[sqs.java2.sqs_example.create_queue]
             Map<QueueAttributeName, String> queueAttributes = new HashMap<>();
             queueAttributes.put(QueueAttributeName.FIFO_QUEUE, "true");
-            queueAttributes.put(QueueAttributeName.CONTENT_BASED_DEDUPLICATION, "true");
+            queueAttributes.put(QueueAttributeName.VISIBILITY_TIMEOUT, "120");
             CreateQueueRequest createQueueRequest = CreateQueueRequest.builder()
                     .queueName(uniqueName)
                     .attributes(queueAttributes)
@@ -162,23 +162,7 @@ public class Utils {
         if(bucket==null) return;
         try {
             // To delete a bucket, all the objects in the bucket must be deleted first
-            ListObjectsV2Request listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket).build();
-            ListObjectsV2Response listObjectsV2Response;
-
-            do {
-                listObjectsV2Response = s3.listObjectsV2(listObjectsV2Request);
-                for (S3Object s3Object : listObjectsV2Response.contents()) {
-                    s3.deleteObject(DeleteObjectRequest.builder()
-                            .bucket(bucket)
-                            .key(s3Object.key())
-                            .build());
-                }
-
-                listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket)
-                        .continuationToken(listObjectsV2Response.nextContinuationToken())
-                        .build();
-
-            } while(listObjectsV2Response.isTruncated());
+            emptyBucket(s3, bucket);
             // snippet-end:[s3.java2.s3_bucket_ops.delete_bucket]
 
             DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucket).build();
@@ -191,6 +175,26 @@ public class Utils {
         }
     }
 
+    public static void emptyBucket(S3Client s3, String bucket) {
+        ListObjectsV2Request listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket).build();
+        ListObjectsV2Response listObjectsV2Response;
+        System.out.println("Clearing the bucket "+bucket);
+        do {
+            listObjectsV2Response = s3.listObjectsV2(listObjectsV2Request);
+            for (S3Object s3Object : listObjectsV2Response.contents()) {
+                s3.deleteObject(DeleteObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(s3Object.key())
+                        .build());
+            }
+
+            listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket)
+                    .continuationToken(listObjectsV2Response.nextContinuationToken())
+                    .build();
+
+        } while(listObjectsV2Response.isTruncated());
+    }
+
     public static void deleteAllBuckets(S3Client s3) {
 
         ListBucketsRequest listBucketsRequest = ListBucketsRequest.builder().build();
@@ -198,10 +202,18 @@ public class Utils {
         listBucketsResponse.buckets().stream().forEach(x -> deleteBucket(s3, x.name()));
     }
 
+    public static void clearAllBuckets(S3Client s3) {
+
+        ListBucketsRequest listBucketsRequest = ListBucketsRequest.builder().build();
+        ListBucketsResponse listBucketsResponse = s3.listBuckets(listBucketsRequest);
+        listBucketsResponse.buckets().stream().forEach(x -> emptyBucket(s3, x.name()));
+    }
+
     public static void putFileInBucket(S3Client s3, String bucket, String inputLoc, String inputPath) {
         PutObjectRequest objectRequest = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(inputLoc)
+                .acl(ObjectCannedACL.PUBLIC_READ)
                 .build();
         try {
             s3.putObject(objectRequest, RequestBody.fromFile(new File(inputPath)));
@@ -213,14 +225,15 @@ public class Utils {
         }
     }
 
-    public static void sendMsg(SqsClient sqsClient, String queueUrl, String msg, String fromTo) {
+    public static void sendMsg(SqsClient sqsClient, String queueUrl, String msg, String fromTo, String msgGroupId) {
 
 
         try {
             SendMessageRequest req = SendMessageRequest.builder()
                     .queueUrl(queueUrl)
-                    .messageGroupId("ID")
+                    .messageGroupId(msgGroupId)
                     .messageBody(msg)
+                    .messageDeduplicationId(""+System.currentTimeMillis())
                     .build();
             sqsClient.sendMessage(req);
             System.out.println(String.format(fromTo+": %s through %s", msg, queueUrl));
@@ -334,7 +347,7 @@ public class Utils {
                 .build();
         Utils.purgeAllQs(sqsClient, LocalApp.LA_resourcePrefix);
         Utils.purgeAllQs(sqsClient, Manager.MGR_resourcePrefix);
-        Utils.deleteAllBuckets(s3);
+        Utils.clearAllBuckets(s3);
     }
     public static void purgeAllQs(SqsClient sqsClient, String prefix) {
 

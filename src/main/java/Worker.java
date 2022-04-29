@@ -4,6 +4,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 
+import java.io.BufferedInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -30,20 +35,53 @@ public class Worker {
             } catch (InterruptedException | AbortedException e) {
                 break;
             }
-            MgrWkrMsg msg = MgrWkrMsg.parse(msgs.get(0).body());
+            MgrWkrMsg msg = new MgrWkrMsg(msgs.get(0).body());
+            System.out.println(String.format("WKR got task %s", msg.toString()));
             String[] task = getTask(s3, msg.getFile(), msg.getIdx());
+            WkrMgrMsg result = handleMsg(s3, bucket ,task[0], task[1], msg.getIdx(), msg.getFile());
+            System.out.println("WKR done parsing");
             Utils.deleteMsgs(sqsClient, MGR_WKR_SQS_url, msgs);
-            Utils.sendMsg(sqsClient, WKR_MGR_SQS_url, WkrMgrMsg.getString(msg.getFile(), msg.getIdx(), task[0],task[1],task[1], ""), "WKR->RC");
+            Utils.sendMsg(sqsClient, WKR_MGR_SQS_url, result.toString(), "WKR->RC", ""+System.currentTimeMillis());
         }
         System.out.println("WKR done");
+    }
+
+    public static WkrMgrMsg handleMsg(S3Client s3, String theBucket,String taskType, String pasringSubject, int idx, String inputFile) {
+        String inPath;
+        String outPath = null;
+        String outPutLoc;
+        try{
+            inPath = download(pasringSubject);
+            outPath = MyParser.parse(taskType, inPath);
+            outPutLoc = inputFile+"_"+Integer.toString(idx);
+            Utils.putFileInBucket(s3, theBucket, outPutLoc, outPath);
+        }catch (MyParserException| DownloadException e){
+            throw new RuntimeException(e);
+            //return new WkrMgrMsg(inputFile,idx, taskType, pasringSubject, "NO_OUTPUT", e.msg());
+        }
+        return new WkrMgrMsg(inputFile,idx, taskType, pasringSubject, outPutLoc, "");
+    }
+
+    private static String download(String url) throws DownloadException {
+        String name = Paths.get(url).getFileName().toString();
+        try (BufferedInputStream in = new BufferedInputStream(new URL(url).openStream());
+             FileOutputStream fileOutputStream = new FileOutputStream(name)) {
+            byte dataBuffer[] = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
+                fileOutputStream.write(dataBuffer, 0, bytesRead);
+            }
+        } catch (IOException e) {
+            throw new DownloadException(e);
+            // handle exception
+        }
+        return name;
     }
 
     private static String[] getTask(S3Client s3, String file, int idx) {
         List<String> allTasks = Utils.getFileString(s3, bucket, file);
         String task = allTasks.get(idx);
-        System.out.println("WKR: task before parsing: "+task);
         String[] split = task.split("\\s+");
-        System.out.println("WKR: task after parsing : "+split[0]+" "+split[1]);
         return split;
     }
 

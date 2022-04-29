@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class LocalApp {
+    public static final String LA_TR_GID = "LA_TR";
     static String LA_MGR_SQS_url = null;
     static String MGR_LA_SQS_url = null;
     static String bucket = null;
@@ -55,9 +56,9 @@ public class LocalApp {
             init_resources();
             initMGR();
             Utils.putFileInBucket(s3, bucket, inputLoc, input);
-            Utils.sendMsg(sqsClient, LA_MGR_SQS_url, inputLoc, "LA->TR");
+            Utils.sendMsg(sqsClient, LA_MGR_SQS_url, inputLoc, "LA->TR", LA_TR_GID);
             if(terminate){
-                Utils.sendMsg(sqsClient, LA_MGR_SQS_url, Common.TERMINATE_MSG+System.currentTimeMillis(), "LA->TR");
+                Utils.sendMsg(sqsClient, LA_MGR_SQS_url, Common.TERMINATE_MSG+System.currentTimeMillis(), "LA->TR", LA_TR_GID);
             }
             List<Message> msgs = Utils.waitForMessagesFrom(sqsClient, MGR_LA_SQS_url, "MGR->LA", 1);
             String resultS3Loc = msgs.get(0).body();
@@ -71,7 +72,7 @@ public class LocalApp {
             if(terminate){
                 Utils.purgeQ(sqsClient, LA_MGR_SQS_url);
                 Utils.purgeQ(sqsClient, MGR_LA_SQS_url);
-                Utils.deleteBucket(s3, bucket);
+                Utils.emptyBucket(s3, bucket);
             }
         }
 
