@@ -1,3 +1,4 @@
+import com.google.protobuf.CodedOutputStream;
 import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
 import edu.stanford.nlp.pipeline.CoreDocument;
 import edu.stanford.nlp.pipeline.CoreSentence;
@@ -51,6 +52,9 @@ public class MyParser {
         } catch (Exception e){
             System.err.println("MyParser: GenExc");
             e.printStackTrace();
+            throw new MyParserException(e);
+        } catch (OutOfMemoryError e){
+            System.err.println("MyParser: OOM");
             throw new MyParserException(e);
         }
     }
