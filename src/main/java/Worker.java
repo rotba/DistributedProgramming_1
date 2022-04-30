@@ -56,8 +56,7 @@ public class Worker {
             outPutLoc = inputFile+"_"+Integer.toString(idx);
             Utils.putFileInBucket(s3, theBucket, outPutLoc, outPath);
         }catch (MyParserException| DownloadException e){
-            throw new RuntimeException(e);
-            //return new WkrMgrMsg(inputFile,idx, taskType, pasringSubject, "NO_OUTPUT", e.msg());
+            return new WkrMgrMsg(inputFile,idx, taskType, pasringSubject, "NO_OUTPUT", e.getMessage());
         }
         return new WkrMgrMsg(inputFile,idx, taskType, pasringSubject, outPutLoc, "");
     }

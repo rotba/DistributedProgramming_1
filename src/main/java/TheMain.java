@@ -34,6 +34,8 @@ public class TheMain {
             Utils.clearResources();
         }else if(args[0].equals("WKR")){
             Worker.wrkrMain(subArgs);
+        }else if(args[0].equals(LocalApp.MGR_JOB_CODE)){
+            Manager.mainMGR(subArgs);
         }else if(args[0].equals("PSR")){
             Document doc = new Document("add your text here! It can contain multiple sentences.");
             for (Sentence sent : doc.sentences()) {  // Will iterate over two sentences

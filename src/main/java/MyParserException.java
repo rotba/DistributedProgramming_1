@@ -1,10 +1,14 @@
 import java.io.IOException;
 
 public class MyParserException extends Throwable {
-    public IOException e;
+    public Exception e;
 
-    public MyParserException(IOException e) {
+    public MyParserException(Exception e) {
         this.e = e;
     }
 
+    @Override
+    public String getMessage() {
+        return e.getMessage();
+    }
 }

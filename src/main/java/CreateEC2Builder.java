@@ -95,6 +95,8 @@ public class CreateEC2Builder {
 //        for (int i = 0; i < Common.WRKRS_PER_VM; i++) {
 //            userData = userData + "fg\n";
 //        }
+        userData = userData + String.format("sudo halt\n");
+        userData = userData + String.format("echo THIS LINE SHOULDNT BE PRINTED\n");
         System.out.println(userData);
         String base64UserData = null;
         try {

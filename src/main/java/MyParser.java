@@ -46,6 +46,11 @@ public class MyParser {
             }
             return outpath;
         } catch (IOException e) {
+            System.err.println("MyParser: IOExc");
+            throw new MyParserException(e);
+        } catch (Exception e){
+            System.err.println("MyParser: GenExc");
+            e.printStackTrace();
             throw new MyParserException(e);
         }
     }
