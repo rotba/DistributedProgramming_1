@@ -101,7 +101,7 @@ public class LocalApp {
         List<String> mgrSingelton = Utils.getActiveEC2s(ec2, MGR_TAG);
         if (mgrSingelton.size() == 0) {
             System.err.println("A MGR should be active");
-        } else if (mgrSingelton.size() > 1) {
+        } else {
             if (mgrSingelton.size() > 1) System.err.println("Only one MGR should be active");
             for (String mgrId :
                     mgrSingelton) {

@@ -5,7 +5,7 @@ public class Common {
     public static final String FIFO_SUFFIX = ".fifo";
     public static final boolean USE_THREAD_MGR = false;
 
-    public static final String WKR_MGR_AMI = "ami-0e7a04ec3d5e8481f";
+    public static final String WKR_MGR_AMI = "ami-0a7281a210a3d8ad9";
     public static boolean DONT_RUN_EC2s = false;
 
     public enum MGR_IDX {
