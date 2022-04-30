@@ -20,7 +20,10 @@ public class WkrMgrMsg {
         task=splited[2];
         input = splited[3];
         output = splited[4];
-        msg = splited.length>5 ? splited[5] : "";
+        msg = "";
+        for (int i = 5; i <splited.length ; i++) {
+            msg+= splited[i]+" ";
+        }
     }
 
     public String getFile() {
