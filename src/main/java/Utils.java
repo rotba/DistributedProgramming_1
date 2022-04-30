@@ -19,11 +19,11 @@ import java.util.stream.Collectors;
 public class Utils {
 
     public static String createUniqueQueue(SqsClient sqsClient, String uniqueGivenName) {
-        String uniqueName= uniqueGivenName+Common.FIFO_SUFFIX;
+        String uniqueName = uniqueGivenName + Common.FIFO_SUFFIX;
         try {
             String ans = getQueueIfExist(sqsClient, uniqueName);
-            if (ans!=null){
-                System.out.println("Q " +ans+" exits, returns it");
+            if (ans != null) {
+                System.out.println("Q " + ans + " exits, returns it");
                 return ans;
             }
             // snippet-start:[sqs.java2.sqs_example.create_queue]
@@ -71,8 +71,8 @@ public class Utils {
             ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().build();
             ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
             List<String> urls = listQueuesResponse.queueUrls();
-            for (String url: urls){
-                if(url.contains(subName)){
+            for (String url : urls) {
+                if (url.contains(subName)) {
                     return url;
                 }
             }
@@ -99,8 +99,9 @@ public class Utils {
         }
         // snippet-end:[sqs.java2.sqs_example.get_queue]
     }
+
     public static void deleteQueue(SqsClient sqsClient, String queueUrl) {
-        if(queueUrl==null) return;
+        if (queueUrl == null) return;
         try {
             // snippet-start:[sqs.java2.sqs_example.create_queue]
 
@@ -113,8 +114,8 @@ public class Utils {
 
             System.out.println(String.format("Deleted sqs:%s", queueUrl));
 
-        }catch (QueueDoesNotExistException e){
-            System.out.println("q url : "+queueUrl+ " doesnt exist. hope not bug");
+        } catch (QueueDoesNotExistException e) {
+            System.out.println("q url : " + queueUrl + " doesnt exist. hope not bug");
         } catch (SqsException e) {
             System.err.println(e.awsErrorDetails().errorMessage());
             throw e;
@@ -127,14 +128,14 @@ public class Utils {
         try {
             ListBucketsRequest listBucketsRequest = ListBucketsRequest.builder().build();
             ListBucketsResponse listBucketsResponse = s3Client.listBuckets(listBucketsRequest);
-            for (Bucket b:
-                 listBucketsResponse.buckets()) {
-                if(b.name().contains(prefix)){
+            for (Bucket b :
+                    listBucketsResponse.buckets()) {
+                if (b.name().contains(prefix)) {
                     System.out.println(prefix + " already exist");
                     return b.name();
                 }
             }
-            String bName = prefix+ System.currentTimeMillis();
+            String bName = prefix + System.currentTimeMillis();
             S3Waiter s3Waiter = s3Client.waiter();
             CreateBucketRequest bucketRequest = CreateBucketRequest.builder()
                     .bucket(bName)
@@ -148,8 +149,9 @@ public class Utils {
 
             // Wait until the bucket is created and print out the response
             WaiterResponse<HeadBucketResponse> waiterResponse = s3Waiter.waitUntilBucketExists(bucketRequestWait);
-            waiterResponse.matched().response().ifPresent((x)->{});
-            System.out.println("created bucket "+bName);
+            waiterResponse.matched().response().ifPresent((x) -> {
+            });
+            System.out.println("created bucket " + bName);
             return bName;
 
         } catch (S3Exception e) {
@@ -159,7 +161,7 @@ public class Utils {
     }
 
     public static void deleteBucket(S3Client s3, String bucket) {
-        if(bucket==null) return;
+        if (bucket == null) return;
         try {
             // To delete a bucket, all the objects in the bucket must be deleted first
             emptyBucket(s3, bucket);
@@ -178,7 +180,7 @@ public class Utils {
     public static void emptyBucket(S3Client s3, String bucket) {
         ListObjectsV2Request listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket).build();
         ListObjectsV2Response listObjectsV2Response;
-        System.out.println("Clearing the bucket "+bucket);
+        System.out.println("Clearing the bucket " + bucket);
         do {
             listObjectsV2Response = s3.listObjectsV2(listObjectsV2Request);
             for (S3Object s3Object : listObjectsV2Response.contents()) {
@@ -192,7 +194,7 @@ public class Utils {
                     .continuationToken(listObjectsV2Response.nextContinuationToken())
                     .build();
 
-        } while(listObjectsV2Response.isTruncated());
+        } while (listObjectsV2Response.isTruncated());
     }
 
     public static void deleteAllBuckets(S3Client s3) {
@@ -221,7 +223,7 @@ public class Utils {
         } catch (S3Exception e) {
             e.printStackTrace();
             System.err.println(e.awsErrorDetails().errorMessage());
-            throw  e;
+            throw e;
         }
     }
 
@@ -233,10 +235,10 @@ public class Utils {
                     .queueUrl(queueUrl)
                     .messageGroupId(msgGroupId)
                     .messageBody(msg)
-                    .messageDeduplicationId(""+System.currentTimeMillis())
+                    .messageDeduplicationId("" + System.currentTimeMillis())
                     .build();
             sqsClient.sendMessage(req);
-            System.out.println(String.format(fromTo+": %s through %s", msg, queueUrl));
+            System.out.println(String.format(fromTo + ": %s through %s", msg, queueUrl));
             // snippet-end:[sqs.java2.sqs_example.send__multiple_messages]
 
         } catch (SqsException e) {
@@ -244,7 +246,8 @@ public class Utils {
             throw e;
         }
     }
-    public static List<Message> receiveMessages(SqsClient sqsClient, String queueUrl,int amount) {
+
+    public static List<Message> receiveMessages(SqsClient sqsClient, String queueUrl, int amount) {
 
         try {
             if (amount == Integer.MAX_VALUE) {
@@ -257,8 +260,8 @@ public class Utils {
                     .build();
             List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
             return messages;
-        }catch (QueueDoesNotExistException e){
-            System.out.println("problematic q "+queueUrl);
+        } catch (QueueDoesNotExistException e) {
+            System.out.println("problematic q " + queueUrl);
             System.err.println(e.awsErrorDetails().errorMessage());
             throw e;
         } catch (SqsException e) {
@@ -278,16 +281,15 @@ public class Utils {
         return Arrays.asList(fileString.split("\\s*\n\\s*"));
     }
 
-    static List<Message> waitForMessagesFrom(SqsClient sqs, String MGR_LA_SQS_url, String fromTo,int amount) throws InterruptedException {
+    static List<Message> waitForMessagesFrom(SqsClient sqs, String MGR_LA_SQS_url, String fromTo, int amount) throws InterruptedException {
         List<Message> msgs = null;
         System.out.println(String.format("Waiting for msgs from %s", fromTo));
-        do
-        {
-            if(Thread.interrupted()){
+        do {
+            if (Thread.interrupted()) {
                 throw new InterruptedException();
             }
-            msgs = receiveMessages(sqs, MGR_LA_SQS_url,amount);
-        }while (msgs == null || msgs.size() < 1);
+            msgs = receiveMessages(sqs, MGR_LA_SQS_url, amount);
+        } while (msgs == null || msgs.size() < 1);
         System.out.println(String.format("Got %d msgs from %s", msgs.size(), fromTo));
         return msgs;
     }
@@ -349,6 +351,7 @@ public class Utils {
         Utils.purgeAllQs(sqsClient, Manager.MGR_resourcePrefix);
         Utils.clearAllBuckets(s3);
     }
+
     public static void purgeAllQs(SqsClient sqsClient, String prefix) {
 
         try {
@@ -365,8 +368,8 @@ public class Utils {
         }
         // snippet-end:[sqs.java2.sqs_example.get_queue]
     }
-    public static void list()
-    {
+
+    public static void list() {
         Region region = Region.US_EAST_1;
         SqsClient sqsClient = SqsClient.builder()
                 .region(region)
@@ -378,7 +381,7 @@ public class Utils {
             ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().build();
             ListQueuesResponse listQueuesResponse = sqsClient.listQueues(listQueuesRequest);
             List<String> urls = listQueuesResponse.queueUrls();
-            for (String url: urls){
+            for (String url : urls) {
                 System.out.println(url);
             }
 
@@ -393,7 +396,7 @@ public class Utils {
                     .queueUrl(url)
                     .build();
             sqsClient.purgeQueue(purgeQ);
-            System.out.println("Purged "+url);
+            System.out.println("Purged " + url);
             // snippet-end:[sqs.java2.sqs_example.delete_message]
 
         } catch (SqsException e) {
@@ -402,5 +405,64 @@ public class Utils {
     }
 
 
+    public static void terminateInstance(Ec2Client ec2, String instanceID) {
+        try {
+            TerminateInstancesRequest ti = TerminateInstancesRequest.builder()
+                    .instanceIds(instanceID)
+                    .build();
 
+            TerminateInstancesResponse response = ec2.terminateInstances(ti);
+            List<InstanceStateChange> list = response.terminatingInstances();
+
+            for (int i = 0; i < list.size(); i++) {
+                InstanceStateChange sc = (list.get(i));
+                System.out.println("The ID of the terminated instance is " + sc.instanceId());
+            }
+        } catch (Ec2Exception e) {
+            System.err.println(e.awsErrorDetails().errorMessage());
+            System.err.println("BAD BAD BAD - ec2 not terminated $$$$$$$$$$$$$, Maybe he died?");
+        }
+    }
+
+    public static List<String> getActiveEC2s(Ec2Client ec2, String wkrTag) {
+        List<String> ans = new ArrayList<>();
+        boolean done = false;
+        String nextToken = null;
+
+        try {
+
+            do {
+                DescribeInstancesRequest request = DescribeInstancesRequest.builder().maxResults(6).nextToken(nextToken).build();
+                DescribeInstancesResponse response = ec2.describeInstances(request);
+
+                for (Reservation reservation : response.reservations()) {
+                    for (Instance instance : reservation.instances()) {
+                        if ((!ans.contains(instance.instanceId())) &&
+                                isActiveEc2(instance, wkrTag)) {
+                            ans.add(instance.instanceId());
+                        }
+                    }
+                }
+                nextToken = response.nextToken();
+            } while (nextToken != null);
+
+        } catch (Ec2Exception e) {
+            System.err.println(e.awsErrorDetails().errorMessage());
+            System.err.println("ERROR getActiveEC2s");
+        }
+        return ans;
+    }
+
+    private static boolean isActiveEc2(Instance instance, String wkrTag) {
+        return isTaggedAs(instance.tags(), wkrTag) && inActiveState(instance.state().name());
+    }
+
+    private static boolean isTaggedAs(List<Tag> tags, String wkrTag) {
+        return tags.size() > 0 &&
+                tags.stream().anyMatch(t -> t.key().equals("Name") && t.value().equals(wkrTag));
+    }
+
+    private static boolean inActiveState(InstanceStateName name) {
+        return name.equals(InstanceStateName.PENDING) || name.equals(InstanceStateName.RUNNING);
+    }
 }

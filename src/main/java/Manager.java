@@ -38,18 +38,17 @@ public class Manager {
         try{
             init_resources(sqsClient);
             Thread taskReciever = new Thread(new TaskReceiver(LA_MGR_SQS_url, MGR_WKR_SQS_url, bucket, userTasks, pendingTasksCount));
-            Thread autoScaler =new Thread(
-                    AutoScaler.create()
-                            .setAccess(ACCESS)
-                            .setSecret(SECRET)
-                            .setBucket(bucket)
-                            .setMGR_WKR_SQS_url(MGR_WKR_SQS_url)
-                            .setWKR_MGR_SQS_url(WKR_MGR_SQS_url)
-                            .setN(n)
-                            .setWrkrAmi(AMI)
-                            .setUserTasks(userTasks)
-                            .build()
-            );
+            AutoScaler autoScalerObject = AutoScaler.create()
+                    .setAccess(ACCESS)
+                    .setSecret(SECRET)
+                    .setBucket(bucket)
+                    .setMGR_WKR_SQS_url(MGR_WKR_SQS_url)
+                    .setWKR_MGR_SQS_url(WKR_MGR_SQS_url)
+                    .setN(n)
+                    .setWrkrAmi(AMI)
+                    .setUserTasks(userTasks)
+                    .build();
+            Thread autoScaler =new Thread(autoScalerObject);
             Thread resultsCollector = new Thread(new ResultsCollector(MGR_LA_SQS_url, WKR_MGR_SQS_url, bucket, userTasks, pendingTasksCount));
             taskReciever.start();
             resultsCollector.start();
@@ -57,8 +56,8 @@ public class Manager {
             taskReciever.join();
             while (pendingTasksCount.get() >0){}
             resultsCollector.interrupt();
-            autoScaler.interrupt();
             resultsCollector.join();
+            autoScalerObject.terminate();
             autoScaler.join();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

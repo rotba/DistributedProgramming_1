@@ -3,7 +3,7 @@ public class Common {
     public static final String WKR_CODE = "WKR";
 
     public static final String FIFO_SUFFIX = ".fifo";
-    public static boolean DONT_RUN_EC2s = true;
+    public static boolean DONT_RUN_EC2s = false;
 
     public enum MGR_IDX {
         BKT(0), N(1), LA_MGR_SQS(2), MGR_LA_SQS(3), AMI(4), SECRET(5), ACCESS(6), LENGTH(7);

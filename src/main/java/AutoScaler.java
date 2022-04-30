@@ -4,6 +4,7 @@ import software.amazon.awssdk.services.ec2.Ec2Client;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AutoScaler implements Runnable {
     private int n;
@@ -12,7 +13,6 @@ public abstract class AutoScaler implements Runnable {
     protected String bucket;
     private ConcurrentHashMap<String, UserTask> userTasks;
     Queue<Thread> wrkrs = new LinkedList<>();
-    Queue<String> wrkrsEc2 = new LinkedList<>();
 
     String wrkrAmi;
 
@@ -21,6 +21,8 @@ public abstract class AutoScaler implements Runnable {
     String secret;
 
     protected static String wkrTag = "WKR";
+
+    private AtomicBoolean terminated = new AtomicBoolean(false);
 
     public AutoScaler build(){
         assert n!=0;
@@ -102,7 +104,7 @@ public abstract class AutoScaler implements Runnable {
 
     @Override
     public void run() {
-        while (!Thread.interrupted()){
+        while (!terminated.get()){
             int pendingWorkerTasks= countPendingWorkerTasks();
             int workers = countWorkers();
             int desiredWorkersCount = calcDesridWkrs(pendingWorkerTasks, n);
@@ -112,13 +114,18 @@ public abstract class AutoScaler implements Runnable {
                 terminate(workers - desiredWorkersCount);
             }
         }
+        System.out.println("AS terminates");
+        int workers = countWorkers();
+        terminate(workers);
+        System.out.println("AS Done");
     }
 
     private int calcDesridWkrs(int pendingWorkerTasks, int n) {
-        if(pendingWorkerTasks > 0)
-            return 1;
-        else
+        if(pendingWorkerTasks >0 ){
+            return 2;
+        }else{
             return 0;
+        }
     }
 
     protected abstract void terminate(int i);
@@ -136,5 +143,12 @@ public abstract class AutoScaler implements Runnable {
             ans+=ut.getNotDoneCount();
         }
         return ans;
+    }
+
+    public void terminate() {
+        boolean val;
+        do{
+            val = terminated.get();
+        }while(!terminated.compareAndSet(val, true));
     }
 }

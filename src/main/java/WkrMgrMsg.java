@@ -31,8 +31,8 @@ public class WkrMgrMsg {
         return idx;
     }
 
-    public String getRes() {
-        return task+": "+input+" "+ (msg.equals("") ? output: msg);
+    public String getRes(String bucket) {
+        return task+": "+input+" "+ (msg.equals("") ? String.format("http://s3.us-east-1.amazonaws.com/%s/%s", bucket, output): msg);
     }
 
     private String file;

@@ -50,7 +50,7 @@ public class ResultsCollector implements Runnable {
                 UserTask ut = userTasks.get(parsedMsg.getFile());
                 int wkrTaskIdx = parsedMsg.getIdx();
                 if(!ut.isDone(wkrTaskIdx)){
-                    ut.setDone(wkrTaskIdx, parsedMsg.getRes());
+                    ut.setDone(wkrTaskIdx, parsedMsg.getRes(bucket));
                     Utils.deleteMsgs(sqsClient, WKR_MGR_SQS_url, Arrays.asList(msg));
                     if (ut.isDone()){
                         String resLoc = "RES" + parsedMsg.getFile();
