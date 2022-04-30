@@ -44,8 +44,6 @@ public class LocalApp {
     static String SECRET;
     static String ACCESS;
 
-    public static final String WKR_MGR_AMI = "ami-0dba4f2aaa707896a";
-
     public static void mainLA(String[] args) {
         input = args[0];
         output = args[1];
@@ -178,7 +176,7 @@ public class LocalApp {
         String[] args = new String[Common.MGR_IDX.LENGTH.idx];
         args[Common.MGR_IDX.LA_MGR_SQS.idx] = LA_MGR_SQS_url;
         args[Common.MGR_IDX.MGR_LA_SQS.idx] = MGR_LA_SQS_url;
-        args[Common.MGR_IDX.AMI.idx] = WKR_MGR_AMI;
+        args[Common.MGR_IDX.AMI.idx] = Common.WKR_MGR_AMI;
         args[Common.MGR_IDX.BKT.idx] = bucket;
         args[Common.MGR_IDX.N.idx] = n;
         args[Common.MGR_IDX.SECRET.idx] = SECRET;
@@ -195,7 +193,7 @@ public class LocalApp {
                     .setBucket(bucket)
                     .setSecret(SECRET)
                     .setAccess(ACCESS)
-                    .setAmi(WKR_MGR_AMI)
+                    .setAmi(Common.WKR_MGR_AMI)
                     .setTagString(MGR_TAG)
                     .setEc2(ec2)
                     .setJobCode(MGR_JOB_CODE)

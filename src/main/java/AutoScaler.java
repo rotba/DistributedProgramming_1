@@ -121,11 +121,11 @@ public abstract class AutoScaler implements Runnable {
     }
 
     private int calcDesridWkrs(int pendingWorkerTasks, int n) {
-        if(pendingWorkerTasks >0 ){
-            return 2;
-        }else{
-            return 0;
+        int ans = pendingWorkerTasks / n;
+        if((pendingWorkerTasks%n) != 0){
+            ans++;
         }
+        return ans;
     }
 
     protected abstract void terminate(int i);

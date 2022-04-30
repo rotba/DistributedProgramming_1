@@ -11,9 +11,8 @@ public class TheMain {
         String[] subArgs = Arrays.asList(args)
                 .subList(1, args.length)
                 .toArray(new String[0]);
-        if(args[0].equals("LA")){
-            LocalApp.mainLA(subArgs);
-        }else if(args[0].equals("TEAR")){
+
+        if(args[0].equals("TEAR")){
             Utils.tearDown();
         }else if (args[0].equals("MLT")){
             String[] args1 = new String[]{"LA", "/home/rotemb271/Code/School/bgu/extern/DistributedProgramming_1/input-sample.txt", "/home/rotemb271/Code/School/bgu/extern/DistributedProgramming_1/out.html", "10"};
@@ -53,6 +52,10 @@ public class TheMain {
                     .region(region)
                     .build();
             System.out.println(Worker.handleMsg(s3, "robarakbucket1651229518122","POS", "https://www.gutenberg.org/files/1659/1659-0.txt", 0, "loc"+System.currentTimeMillis()));
+        }else if(args[0].equals("LA")) {
+            LocalApp.mainLA(subArgs);
+        }else{
+            LocalApp.mainLA(args);
         }
     }
 }
