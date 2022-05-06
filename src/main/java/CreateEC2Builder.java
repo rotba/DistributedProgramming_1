@@ -116,7 +116,7 @@ public class CreateEC2Builder {
                 .userData(getUserData())
                 .keyName("dsp222_kv0")
                 .build();
-        if(Common.DONT_RUN_EC2s){
+        if(Common.DONT_EUNT_WKR_EC2s){
             System.out.println(runRequest.userData());
             return null;
         }
