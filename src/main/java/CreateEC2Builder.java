@@ -88,7 +88,7 @@ public class CreateEC2Builder {
         userData = userData + "cd /home/ubuntu\n";
         userData = userData + String.format("export AWS_ACCESS_KEY_ID=%s\n",access);
         userData = userData + String.format("export AWS_SECRET_ACCESS_KEY=%s\n",secret);
-        userData = userData + String.format("java -jar -mx200m DistributedProgramming_1/target/DistributedProgramming_1-1.0-SNAPSHOT-jar-with-dependencies.jar %s %s\n",jobCode, argsString);
+        userData = userData + String.format("java -jar -mx600m DistributedProgramming_1/target/DistributedProgramming_1-1.0-SNAPSHOT-jar-with-dependencies.jar %s %s\n",jobCode, argsString);
 //        for (int i = 0; i < Common.WRKRS_PER_VM; i++) {
 //            userData = userData + String.format("java -jar -mx200m DistributedProgramming_1/target/DistributedProgramming_1-1.0-SNAPSHOT-jar-with-dependencies.jar %s %s &\n",jobCode, argsString);
 //        }
