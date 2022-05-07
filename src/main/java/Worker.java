@@ -28,21 +28,19 @@ public class Worker {
         S3Client s3 = S3Client.builder()
                 .region(region)
                 .build();
-        while(!Thread.interrupted()){
-            List<Message> msgs;
-            try {
-                msgs = Utils.waitForMessagesFrom(sqsClient, MGR_WKR_SQS_url,"TR->WKR", 1);
-            } catch (InterruptedException | AbortedException e) {
-                break;
-            }
-            MgrWkrMsg msg = new MgrWkrMsg(msgs.get(0).body());
-            System.out.println(String.format("WKR got task %s", msg.toString()));
-            String[] task = getTask(s3, msg.getFile(), msg.getIdx());
-            WkrMgrMsg result = handleMsg(s3, bucket ,task[0], task[1], msg.getIdx(), msg.getFile());
-            System.out.println("WKR done parsing");
-            Utils.deleteMsgs(sqsClient, MGR_WKR_SQS_url, msgs);
-            Utils.sendMsg(sqsClient, WKR_MGR_SQS_url, result.toString(), "WKR->RC", ""+System.currentTimeMillis());
+        List<Message> msgs;
+        try {
+            msgs = Utils.waitForMessagesFrom(sqsClient, MGR_WKR_SQS_url,"TR->WKR", 1);
+        } catch (InterruptedException | AbortedException e) {
+            return;
         }
+        MgrWkrMsg msg = new MgrWkrMsg(msgs.get(0).body());
+        System.out.println(String.format("WKR got task %s", msg.toString()));
+        String[] task = getTask(s3, msg.getFile(), msg.getIdx());
+        WkrMgrMsg result = handleMsg(s3, bucket ,task[0], task[1], msg.getIdx(), msg.getFile());
+        System.out.println("WKR done parsing");
+        Utils.deleteMsgs(sqsClient, MGR_WKR_SQS_url, msgs);
+        Utils.sendMsg(sqsClient, WKR_MGR_SQS_url, result.toString(), "WKR->RC", ""+System.currentTimeMillis());
         System.out.println("WKR done");
     }
 

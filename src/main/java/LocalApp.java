@@ -39,7 +39,7 @@ public class LocalApp {
 
     public static String LA_MGR_ID_PREF = LA_resourcePrefix + "LAxMGR";
     public static String MGR_LA_ID_PREF = LA_resourcePrefix + "MGRxLA";
-    static String BUCKET_ID = "robarakbucket";
+    static String BUCKET_ID = "2robarakbucket";
 
     static String SECRET;
     static String ACCESS;
