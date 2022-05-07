@@ -83,7 +83,7 @@ public class LocalApp {
             if (terminate) {
                 Utils.purgeQ(sqsClient, LA_MGR_SQS_url);
                 Utils.purgeQ(sqsClient, MGR_LA_SQS_url);
-                Utils.emptyBucket(s3, bucket);
+                //Utils.emptyBucket(s3, bucket);
             }
         }
 
