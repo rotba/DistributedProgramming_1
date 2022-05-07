@@ -29,7 +29,7 @@ public class Utils {
             // snippet-start:[sqs.java2.sqs_example.create_queue]
             Map<QueueAttributeName, String> queueAttributes = new HashMap<>();
             queueAttributes.put(QueueAttributeName.FIFO_QUEUE, "true");
-            queueAttributes.put(QueueAttributeName.VISIBILITY_TIMEOUT, "120");
+            queueAttributes.put(QueueAttributeName.VISIBILITY_TIMEOUT, "1800");
             CreateQueueRequest createQueueRequest = CreateQueueRequest.builder()
                     .queueName(uniqueName)
                     .attributes(queueAttributes)

@@ -25,6 +25,7 @@ public class MyParser {
             e.printStackTrace();
             throw new MyParserException(e);
         } catch (OutOfMemoryError e){
+            e.printStackTrace();
             System.err.println("MyParser: OOM");
             throw new MyParserException(e);
         }
