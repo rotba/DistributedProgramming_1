@@ -70,6 +70,7 @@ public class LocalApp {
                 Utils.sendMsg(sqsClient, LA_MGR_SQS_url, Common.TERMINATE_MSG + System.currentTimeMillis(), "LA->TR", LA_TR_GID);
             }
             List<Message> msgs = Utils.waitForMessagesFrom(sqsClient, MGR_LA_SQS_url, "MGR->LA", 1);
+            Utils.deleteMsgs(sqsClient, MGR_LA_SQS_url, msgs);
             String resultS3Loc = msgs.get(0).body();
             List<String> summaryFile = Utils.getFileString(s3, bucket, resultS3Loc);
             generateHTML(summaryFile, output);
