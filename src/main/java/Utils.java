@@ -349,7 +349,7 @@ public class Utils {
                 .build();
         Utils.purgeAllQs(sqsClient, LocalApp.LA_resourcePrefix);
         Utils.purgeAllQs(sqsClient, Manager.MGR_resourcePrefix);
-        Utils.emptyBucket(s3, LocalApp.bucket);
+        Utils.clearAllBuckets(s3);
     }
 
     public static void purgeAllQs(SqsClient sqsClient, String prefix) {
