@@ -18,7 +18,7 @@ public class MyParser {
 
     public static String parse(String taskType, String inPath) throws MyParserException {
         try{
-            LexicalizedParser.main(new String[]{"-retainTMPSubcategories","-writeOutputFiles", "-maxLength","60","-outputFormat", parsersLexicalParser.get(taskType), "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz", inPath});
+            LexicalizedParser.main(new String[]{"-retainTMPSubcategories","-writeOutputFiles", "-maxLength","60", "-sentences", "newline", "-outputFormat", parsersLexicalParser.get(taskType), "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz", inPath});
             return inPath+".stp";
         } catch (Exception e){
             System.err.println("MyParser: GenExc");
