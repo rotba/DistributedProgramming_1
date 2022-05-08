@@ -178,6 +178,10 @@ public class Utils {
     }
 
     public static void emptyBucket(S3Client s3, String bucket) {
+        if(bucket.contains("2robarakbucket") || bucket.contains("3robarakbucket")){
+            //dont erase their content
+            return;
+        }
         ListObjectsV2Request listObjectsV2Request = ListObjectsV2Request.builder().bucket(bucket).build();
         ListObjectsV2Response listObjectsV2Response;
         System.out.println("Clearing the bucket " + bucket);
