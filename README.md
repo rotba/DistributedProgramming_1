@@ -2,6 +2,7 @@
 ## HOW TO RUN
 * Creadentials must be accessible in  `~/.aws/credentials`
 * Assuming the project is cloned to GIT_ROOT execute: 
+  * `cp ./credentials ~/.aws/credentials` 
   * `cd GIT_ROOT`
   * `mvn compile assembly:single`
   * `cd target`
