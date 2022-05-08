@@ -1,4 +1,7 @@
 # DistributedProgramming_1
+
+*Prefer reading this file in  github: https://github.com/rotba/DistributedProgramming_1/blob/main/README.md*
+
 ## HOW TO RUN
 * Creadentials must be accessible in  `~/.aws/credentials`
 * Assuming the project is cloned to GIT_ROOT execute: 
@@ -50,3 +53,7 @@ The manager has 4 constituents (threads)
 
 ### Worker (AKA WKR)
 Forever: read message from the `MGR->WKR` queue, execute the task, and send the result
+
+## THE SAMPLE INPUT
+It took about under 2 hours. The output is in GIT_DIR/out.html
+
