@@ -1,12 +1,14 @@
 # DistributedProgramming_1
 ## HOW TO RUN
-
 * Creadentials must be accessible in  `~/.aws/credentials`
-* Assuming the project is cloned to GIT_ROOT: `cd GIT_ROOT/target`
-* exec `java -jar DistributedProgramming_1-1.0-SNAPSHOT-jar-with-dependencies.jar GIT_ROOT/orig_input-sample.txt GIT_ROOT/out.html 1 terminate`
+* Assuming the project is cloned to GIT_ROOT execute: 
+  * `cd GIT_ROOT`
+  * `mvn compile assembly:single`
+  * `cd target`
+  * `java -jar DistributedProgramming_1-1.0-SNAPSHOT-jar-with-dependencies.jar GIT_ROOT/orig_input-sample.txt GIT_ROOT/out.html 1 terminate`
 
 ## INSTANCES DETAILS
-* AMI - *ami-030a649c3f2921c78*
+* AMI - *ami-0fc851119e45cd2a6*
 * Instance type - *InstanceType.T2_MICRO* 
 
 ## ARCHITECHTURE
